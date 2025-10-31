@@ -138,6 +138,11 @@ app.get("/", (req, res) => {
   });
 });
 
+/* ------------------ 2.1) LEGAL (GPT için şart) ------------------ */
+app.get("/legal", (req, res) => {
+  res.send("AI Commerce Market - Privacy & Terms - Bu PoC kullanıcı verisini kalıcı saklamaz.");
+});
+
 /* ------------------ 3) V1: Ham Ürün Listesi ------------------ */
 app.get("/v1/products", (req, res) => {
   const q = (req.query.q || "").toLowerCase();
