@@ -10,10 +10,6 @@
       "url": "https://ai-commerce-poc.onrender.com",
       "description": "Render production"
     },
-    {
-      "url": "http://localhost:4000",
-      "description": "Local development"
-    }
   ],
   "paths": {
     "/v2/products": {
