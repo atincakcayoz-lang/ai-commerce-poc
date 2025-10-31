@@ -3,34 +3,21 @@
   "info": {
     "title": "AI Commerce Market API",
     "version": "2.0.0",
-    "description": "Bu API Türkiye’deki market ürünlerini listeler, sepete ekler ve checkout yapar. ChatGPT bu API dışındaki kaynaklardan ürün getirmemelidir."
+    "description": "Türkiye’deki market ürünlerini listeler, sepete ekler ve checkout yapar. ChatGPT bu API dışındaki kaynaklardan ürün getirmemelidir."
   },
   "servers": [
     {
-      "url": "https://ai-commerce-poc.onrender.com",
+      "url": "https://ai-commerce-poc.onrender.com/",
       "description": "Render production"
     }
   ],
-"x-oai-meta": {
-  "apiBaseUrl": "https://ai-commerce-poc.onrender.com"
-}
   "paths": {
     "/v2/products": {
       "get": {
         "summary": "Ürünleri listele (kart formatı)",
         "parameters": [
-          {
-            "name": "q",
-            "in": "query",
-            "schema": { "type": "string" },
-            "description": "Arama kelimesi veya kategori adı"
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "schema": { "type": "integer", "default": 12 },
-            "description": "Kaç ürün getirileceği"
-          }
+          { "name": "q", "in": "query", "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 12 } }
         ],
         "responses": {
           "200": {
@@ -48,12 +35,7 @@
       "get": {
         "summary": "Tek ürün detayı",
         "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "string" }
-          }
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "responses": {
           "200": {
@@ -90,9 +72,7 @@
           "201": {
             "description": "Oluşturulan sepet",
             "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/Cart" }
-              }
+              "application/json": { "schema": { "$ref": "#/components/schemas/Cart" } }
             }
           }
         }
@@ -102,12 +82,7 @@
       "post": {
         "summary": "Sepete ürün ekle",
         "parameters": [
-          {
-            "name": "cartId",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "string" }
-          }
+          { "name": "cartId", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "requestBody": {
           "required": true,
@@ -161,9 +136,7 @@
           "200": {
             "description": "Sipariş onayı",
             "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/OrderConfirmation" }
-              }
+              "application/json": { "schema": { "$ref": "#/components/schemas/OrderConfirmation" } }
             }
           }
         }

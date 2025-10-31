@@ -1,3 +1,4 @@
+// server.js (FINAL)
 const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
@@ -8,12 +9,15 @@ const PORT = process.env.PORT || 4000;
 
 app.use(cors());
 app.use(express.json());
+app.use(morgan("dev"));
+
+// CORS + JSON
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
-  res.header("Content-Type", "application/json");
+  res.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type,Authorization");
   next();
 });
-app.use(morgan("dev"));
 
 /* ------------------ 1) TÜRKİYE'YE ÖZGÜ 10.000 ÜRÜN ------------------ */
 function generateTurkishProducts() {
@@ -22,55 +26,55 @@ function generateTurkishProducts() {
       code: "sut-kahvalti",
       name: "Süt & Kahvaltılık",
       price: [30, 160],
-      img: "photo-1580915411954-282cb1c9c450" // süt şişesi
+      img: "photo-1580915411954-282cb1c9c450"
     },
     {
       code: "et-tavuk",
       name: "Et & Tavuk",
       price: [190, 480],
-      img: "photo-1604908176997-1251882baab4" // kırmızı et
+      img: "photo-1604908176997-1251882baab4"
     },
     {
       code: "sebze",
       name: "Sebze",
       price: [15, 60],
-      img: "photo-1540420773420-3366772f4999" // sebzeler
+      img: "photo-1540420773420-3366772f4999"
     },
     {
       code: "meyve",
       name: "Meyve",
       price: [15, 75],
-      img: "photo-1517260739337-6799d239ce83" // meyveler
+      img: "photo-1517260739337-6799d239ce83"
     },
     {
       code: "icecek",
       name: "İçecek",
       price: [10, 50],
-      img: "photo-1544145945-f90425340c7e" // içecekler
+      img: "photo-1544145945-f90425340c7e"
     },
     {
       code: "atistirmalik",
       name: "Atıştırmalık",
       price: [12, 90],
-      img: "photo-1542838132-de9d4df786e9" // çerez
+      img: "photo-1542838132-de9d4df786e9"
     },
     {
       code: "temel-gida",
       name: "Temel Gıda",
       price: [25, 220],
-      img: "photo-1586201375761-83865001e31b" // makarna, yağ
+      img: "photo-1586201375761-83865001e31b"
     },
     {
       code: "temizlik",
       name: "Temizlik & Deterjan",
       price: [35, 190],
-      img: "photo-1581578731548-c64695cc6952" // temizlik ürünleri
+      img: "photo-1581578731548-c64695cc6952"
     },
     {
       code: "kisisel-bakim",
       name: "Kişisel Bakım",
       price: [25, 280],
-      img: "photo-1588776814546-ec7c9a92f8e3" // kozmetik
+      img: "photo-1588776814546-ec7c9a92f8e3"
     }
   ];
 
@@ -127,6 +131,7 @@ function generateTurkishProducts() {
       id++;
       if (PRODUCTS.length >= targetTotal) break;
     }
+    if (PRODUCTS.length >= targetTotal) break;
   }
   return PRODUCTS;
 }
@@ -134,21 +139,27 @@ function generateTurkishProducts() {
 const PRODUCTS = generateTurkishProducts();
 console.log("🛒 Generated products:", PRODUCTS.length);
 
-/* ------------------ 2) HEALTHCHECK ------------------ */
+/* ------------------ 2) HEALTH + LEGAL ------------------ */
 app.get("/", (req, res) => {
   res.json({
     ok: true,
     message: "AI Commerce PoC is up",
-    products: PRODUCTS.length
+    products: PRODUCTS.length,
+    docs: "https://ai-commerce-poc.onrender.com/v2-openapi.json"
   });
 });
 
-/* ------------------ 2.1) LEGAL (GPT için şart) ------------------ */
+app.get("/privacy", (req, res) => {
+  res.type("text/plain").send("AI Commerce Market Privacy Policy (PoC).");
+});
+app.get("/terms", (req, res) => {
+  res.type("text/plain").send("AI Commerce Market Terms of Service (PoC).");
+});
 app.get("/legal", (req, res) => {
-  res.send("AI Commerce Market - Privacy & Terms - Bu PoC kullanıcı verisini kalıcı saklamaz.");
+  res.type("text/plain").send("AI Commerce Market Legal (PoC).");
 });
 
-/* ------------------ 3) V1: Ham Ürün Listesi ------------------ */
+/* ------------------ 3) V1: ham ürün listesi ------------------ */
 app.get("/v1/products", (req, res) => {
   const q = (req.query.q || "").toLowerCase();
   const page = parseInt(req.query.page || "1", 10);
@@ -208,7 +219,6 @@ app.get("/v2/products", (req, res) => {
   res.json({ type: "product_list", total: filtered.length, count: items.length, items });
 });
 
-/* --- 4.1 Tek ürün detayı --- */
 app.get("/v2/products/:id", (req, res) => {
   const product = PRODUCTS.find((p) => p.id === req.params.id);
   if (!product) return res.status(404).json({ error: "Product not found" });
@@ -226,7 +236,6 @@ app.get("/v2/products/:id", (req, res) => {
   });
 });
 
-/* --- 4.2 Kategoriler --- */
 app.get("/v2/categories", (req, res) => {
   const categories = [...new Set(PRODUCTS.map((p) => p.category))];
   res.json({
@@ -240,7 +249,7 @@ app.get("/v2/categories", (req, res) => {
   });
 });
 
-/* ------------------ CART & CHECKOUT ------------------ */
+// Yeni sepet
 app.post("/v2/cart", (req, res) => {
   const id = "CART-" + Date.now();
   CARTS[id] = { id, items: [], total: 0, currency: "TRY" };
@@ -252,6 +261,7 @@ app.post("/v2/cart", (req, res) => {
   });
 });
 
+// Sepete ekle
 app.post("/v2/cart/:cartId/items", (req, res) => {
   const cart = CARTS[req.params.cartId];
   if (!cart) return res.status(404).json({ error: "cart not found" });
@@ -287,48 +297,312 @@ app.post("/v2/cart/:cartId/items", (req, res) => {
   });
 });
 
+// Checkout
 app.post("/v2/checkout", (req, res) => {
   const { cart_id, address_id, slot_id, payment_method } = req.body;
   const cart = CARTS[cart_id];
-  if (!cart) return res.status(400).json({ error: "cart not found" });
+  if (!cart) return res.status(404).json({ error: "cart not found" });
 
-  const orderId = "ORDER-" + Date.now();
+  const orderId = "ORD-" + Date.now();
   ORDERS[orderId] = {
     id: orderId,
     cart_id,
-    address_id,
-    slot_id,
-    payment_method,
     total: cart.total,
-    status: "created"
+    payment_method: payment_method || "credit_card",
+    address_id: address_id || "EV",
+    slot_id: slot_id || "TODAY-18-20"
   };
 
   res.json({
     type: "order_confirmation",
     order_id: orderId,
-    status: "created",
+    status: "confirmed",
     total: { value: cart.total, currency: "TRY", formatted: `${cart.total} ₺` },
-    delivery: { address_id, slot_id },
-    payment_method
+    delivery: {
+      address_id: address_id || "EV",
+      slot_id: slot_id || "TODAY-18-20"
+    },
+    payment_method: payment_method || "credit_card"
   });
 });
 
-/* ------------------ 5) STATIC OPENAPI & PLUGIN ------------------ */
-app.use("/.well-known", express.static(path.join(__dirname, ".well-known")));
+/* ------------------ 5) OPENAPI + PLUGIN SERVE ------------------ */
 app.get("/v2-openapi.json", (req, res) => {
-  res.sendFile(path.join(__dirname, "v2-openapi.json"));
+  // burada direkt dosya değil inline JSON veriyoruz ki localhost kalıntısı olmasın
+  res.json({
+    openapi: "3.0.1",
+    info: {
+      title: "AI Commerce Market API",
+      version: "2.0.0",
+      description: "Türkiye market PoC. ChatGPT sadece bu API'yi kullanmalıdır."
+    },
+    servers: [
+      {
+        url: "https://ai-commerce-poc.onrender.com/",
+        description: "Render production"
+      }
+    ],
+    paths: {
+      "/v2/products": {
+        get: {
+          summary: "Ürünleri listele (kart formatı)",
+          parameters: [
+            { name: "q", in: "query", schema: { type: "string" } },
+            { name: "limit", in: "query", schema: { type: "integer", default: 12 } }
+          ],
+          responses: {
+            200: {
+              description: "Ürün listesi",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ProductList" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v2/products/{id}": {
+        get: {
+          summary: "Tek ürün detayı",
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } }
+          ],
+          responses: {
+            200: {
+              description: "Ürün detayı",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ProductDetail" }
+                }
+              }
+            },
+            404: { description: "Bulunamadı" }
+          }
+        }
+      },
+      "/v2/categories": {
+        get: {
+          summary: "Kategorileri listele",
+          responses: {
+            200: {
+              description: "Kategori listesi",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/CategoryList" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v2/cart": {
+        post: {
+          summary: "Yeni sepet oluştur",
+          responses: {
+            201: {
+              description: "Oluşturulan sepet",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/Cart" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v2/cart/{cartId}/items": {
+        post: {
+          summary: "Sepete ürün ekle",
+          parameters: [
+            { name: "cartId", in: "path", required: true, schema: { type: "string" } }
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    product_id: { type: "string" },
+                    quantity: { type: "integer", default: 1 }
+                  },
+                  required: ["product_id"]
+                }
+              }
+            }
+          },
+          responses: {
+            200: {
+              description: "Güncel sepet",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/Cart" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v2/checkout": {
+        post: {
+          summary: "Ödemeyi/siparişi tamamla",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    cart_id: { type: "string" },
+                    address_id: { type: "string" },
+                    slot_id: { type: "string" },
+                    payment_method: { type: "string" }
+                  },
+                  required: ["cart_id"]
+                }
+              }
+            }
+          },
+          responses: {
+            200: {
+              description: "Sipariş onayı",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/OrderConfirmation" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    components: {
+      schemas: {
+        ProductList: {
+          type: "object",
+          properties: {
+            type: { type: "string", example: "product_list" },
+            total: { type: "integer" },
+            count: { type: "integer" },
+            items: {
+              type: "array",
+              items: { $ref: "#/components/schemas/ProductCard" }
+            }
+          }
+        },
+        ProductCard: {
+          type: "object",
+          properties: {
+            type: { type: "string", example: "product" },
+            id: { type: "string" },
+            title: { type: "string" },
+            subtitle: { type: "string" },
+            category: { type: "string" },
+            description: { type: "string" },
+            price: { $ref: "#/components/schemas/Price" },
+            image_url: { type: "string" },
+            stock: { type: "integer" },
+            rating: { type: "number" },
+            actions: { type: "array" }
+          }
+        },
+        ProductDetail: {
+          type: "object",
+          properties: {
+            type: { type: "string", example: "product_detail" },
+            id: { type: "string" },
+            title: { type: "string" },
+            description: { type: "string" },
+            image_url: { type: "string" },
+            price: { $ref: "#/components/schemas/Price" },
+            stock: { type: "integer" },
+            rating: { type: "number" },
+            brand: { type: "string" },
+            actions: { type: "array" }
+          }
+        },
+        CategoryList: {
+          type: "object",
+          properties: {
+            type: { type: "string", example: "category_list" },
+            count: { type: "integer" },
+            items: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  name: { type: "string" },
+                  actions: { type: "array" }
+                }
+              }
+            }
+          }
+        },
+        Cart: {
+          type: "object",
+          properties: {
+            type: { type: "string", example: "cart" },
+            id: { type: "string" },
+            items: { type: "array" },
+            total: { $ref: "#/components/schemas/Price" }
+          }
+        },
+        OrderConfirmation: {
+          type: "object",
+          properties: {
+            type: { type: "string", example: "order_confirmation" },
+            order_id: { type: "string" },
+            status: { type: "string" },
+            total: { $ref: "#/components/schemas/Price" },
+            delivery: {
+              type: "object",
+              properties: {
+                address_id: { type: "string" },
+                slot_id: { type: "string" }
+              }
+            },
+            payment_method: { type: "string" }
+          }
+        },
+        Price: {
+          type: "object",
+          properties: {
+            value: { type: "number" },
+            currency: { type: "string" },
+            formatted: { type: "string" }
+          }
+        }
+      }
+    }
+  });
 });
 
-/* ------------------ 6) LISTEN ------------------ */
+app.get("/.well-known/ai-plugin.json", (req, res) => {
+  res.json({
+    schema_version: "v1",
+    name_for_human: "AI Commerce Market",
+    name_for_model: "ai_commerce_market",
+    description_for_human:
+      "Türkiye’deki market ürünlerini kendi API’nden listeleyen, sepete ekleyen ve ödeme adımına götüren akıllı market asistanı.",
+    description_for_model:
+      "Bu araç sadece https://ai-commerce-poc.onrender.com/ alan adındaki AI Commerce Market API’sini kullanır. /v2/... endpoint’lerini çağır.",
+    auth: { type: "none" },
+    api: {
+      type: "openapi",
+      url: "https://ai-commerce-poc.onrender.com/v2-openapi.json",
+      is_user_authenticated: false
+    },
+    logo_url: "https://picsum.photos/seed/ai-commerce-logo/256/256",
+    contact_email: "support@example.com",
+    legal_info_url: "https://ai-commerce-poc.onrender.com/legal",
+    terms_of_service_url: "https://ai-commerce-poc.onrender.com/terms",
+    privacy_policy_url: "https://ai-commerce-poc.onrender.com/privacy"
+  });
+});
+
+/* ------------------ START ------------------ */
 app.listen(PORT, () => {
-  const baseURL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
-  console.log(`🚀 AI Commerce PoC running at: ${baseURL}`);
-});
-
-app.get("/terms", (req, res) => {
-  res.send("AI Commerce Market – Terms of Service: Bu PoC kapsamında kullanıcıya hizmet verilir, siparişler simülasyondur.");
-});
-
-app.get("/privacy", (req, res) => {
-  res.send("AI Commerce Market – Privacy Policy: Bu PoC kullanıcıdan kalıcı kişisel veri toplamaz, gönderilen veriler sadece işlem cevabı üretmek için kullanılır.");
+  console.log(`🚀 AI Commerce PoC listening on http://0.0.0.0:${PORT}`);
 });

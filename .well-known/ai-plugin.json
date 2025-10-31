@@ -3,10 +3,8 @@
   "name_for_human": "AI Commerce Market",
   "name_for_model": "ai_commerce_market",
   "description_for_human": "Türkiye’deki market ürünlerini kendi API’nden listeleyen, sepete ekleyen ve ödeme adımına götüren akıllı market asistanı.",
-  "description_for_model": "Bu araç sadece https://ai-commerce-poc.onrender.com alan adındaki AI Commerce Market API’sini kullanır. Market ürünlerini aramak, kategori listelemek, sepete eklemek ve checkout yapmak için /v2/... endpoint’lerini çağır.",
-  "auth": {
-    "type": "none"
-  },
+  "description_for_model": "Bu araç sadece https://ai-commerce-poc.onrender.com/ alan adındaki AI Commerce Market API’sini kullanır. /v2/products, /v2/cart, /v2/checkout endpointlerini çağır.",
+  "auth": { "type": "none" },
   "api": {
     "type": "openapi",
     "url": "https://ai-commerce-poc.onrender.com/v2-openapi.json",
