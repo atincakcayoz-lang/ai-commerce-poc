@@ -1,0 +1,19 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "AI Commerce Market",
+  "name_for_model": "ai_commerce_market",
+  "description_for_human": "Market ürünlerini listeleyen, sepete ekleyen ve ödeme yapan akıllı market asistanı.",
+  "description_for_model": "Market ürünlerini aramak, sepete eklemek, teslimat slotlarını görmek ve checkout yapmak için kullanılan API. Görsel ürün kartı döner.",
+  "auth": {
+    "type": "none"
+  },
+  "api": {
+    "type": "openapi",
+    "url": "http://localhost:4000/v2-openapi.json",
+    "is_user_authenticated": false
+  },
+  "logo_url": "https://picsum.photos/seed/ai-commerce-logo/256/256",
+  "contact_email": "support@example.com",
+  "legal_info_url": "https://example.com/legal"
+}
+
