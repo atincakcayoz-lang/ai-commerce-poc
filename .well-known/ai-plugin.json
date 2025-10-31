@@ -14,6 +14,8 @@
   },
   "logo_url": "https://picsum.photos/seed/ai-commerce-logo/256/256",
   "contact_email": "support@example.com",
-  "legal_info_url": "https://ai-commerce-poc.onrender.com/legal"
+  "legal_info_url": "https://ai-commerce-poc.onrender.com/legal",
+  "terms_of_service_url": "https://ai-commerce-poc.onrender.com/terms",
+  "privacy_policy_url": "https://ai-commerce-poc.onrender.com/privacy"
 }
 
