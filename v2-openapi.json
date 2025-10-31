@@ -11,6 +11,9 @@
       "description": "Render production"
     }
   ],
+"x-oai-meta": {
+  "apiBaseUrl": "https://ai-commerce-poc.onrender.com"
+}
   "paths": {
     "/v2/products": {
       "get": {
