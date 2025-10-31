@@ -3,32 +3,81 @@
   "info": {
     "title": "AI Commerce Market API",
     "version": "2.0.0",
-    "description": "Bu API Türkiye'deki market ürünlerinin listesidir. ChatGPT bu API dışındaki hiçbir kaynaktan ürün getirmemelidir."
+    "description": "Bu API Türkiye’deki market ürünlerini listeler, sepete ekler ve checkout yapar. ChatGPT bu API dışındaki kaynaklardan ürün getirmemelidir."
   },
-"servers": [
-  { "url": "https://ai-commerce-poc.onrender.com", "description": "prod" },
-  { "url": "http://localhost:4000", "description": "local" }
-],
+  "servers": [
+    {
+      "url": "https://ai-commerce-poc.onrender.com",
+      "description": "Render production"
+    },
+    {
+      "url": "http://localhost:4000",
+      "description": "Local development"
+    }
+  ],
   "paths": {
     "/v2/products": {
       "get": {
-        "summary": "Ürünleri listeler (kart formatı)",
+        "summary": "Ürünleri listele (kart formatı)",
         "parameters": [
-          { "name": "q", "in": "query", "schema": { "type": "string" }, "description": "Arama sorgusu" },
-          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 12 }, "description": "Kaç ürün getirileceği" }
+          {
+            "name": "q",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Arama kelimesi veya kategori adı"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 12 },
+            "description": "Kaç ürün getirileceği"
+          }
         ],
         "responses": {
           "200": {
             "description": "Ürün listesi",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "type": { "type": "string" },
-                    "items": { "type": "array", "items": { "$ref": "#/components/schemas/ProductCard" } }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/ProductList" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v2/products/{id}": {
+      "get": {
+        "summary": "Tek ürün detayı",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ürün detayı",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProductDetail" }
+              }
+            }
+          },
+          "404": { "description": "Bulunamadı" }
+        }
+      }
+    },
+    "/v2/categories": {
+      "get": {
+        "summary": "Kategorileri listele",
+        "responses": {
+          "200": {
+            "description": "Kategori listesi",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CategoryList" }
               }
             }
           }
@@ -37,20 +86,29 @@
     },
     "/v2/cart": {
       "post": {
-        "summary": "Yeni sepet oluşturur",
+        "summary": "Yeni sepet oluştur",
         "responses": {
           "201": {
             "description": "Oluşturulan sepet",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Cart" } } }
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Cart" }
+              }
+            }
           }
         }
       }
     },
     "/v2/cart/{cartId}/items": {
       "post": {
-        "summary": "Sepete ürün ekler",
+        "summary": "Sepete ürün ekle",
         "parameters": [
-          { "name": "cartId", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "cartId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
         ],
         "requestBody": {
           "required": true,
@@ -60,8 +118,9 @@
                 "type": "object",
                 "properties": {
                   "product_id": { "type": "string" },
-                  "quantity": { "type": "integer" }
-                }
+                  "quantity": { "type": "integer", "default": 1 }
+                },
+                "required": ["product_id"]
               }
             }
           }
@@ -69,14 +128,19 @@
         "responses": {
           "200": {
             "description": "Güncel sepet",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Cart" } } }
-          }
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Cart" }
+              }
+            }
+          },
+          "404": { "description": "Sepet veya ürün bulunamadı" }
         }
       }
     },
     "/v2/checkout": {
       "post": {
-        "summary": "Ödeme işlemini tamamlar",
+        "summary": "Ödemeyi/siparişi tamamla",
         "requestBody": {
           "required": true,
           "content": {
@@ -88,7 +152,8 @@
                   "address_id": { "type": "string" },
                   "slot_id": { "type": "string" },
                   "payment_method": { "type": "string" }
-                }
+                },
+                "required": ["cart_id"]
               }
             }
           }
@@ -96,7 +161,11 @@
         "responses": {
           "200": {
             "description": "Sipariş onayı",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/OrderConfirmation" } } }
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/OrderConfirmation" }
+              }
+            }
           }
         }
       }
@@ -104,35 +173,101 @@
   },
   "components": {
     "schemas": {
+      "ProductList": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "example": "product_list" },
+          "total": { "type": "integer" },
+          "count": { "type": "integer" },
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ProductCard" }
+          }
+        }
+      },
       "ProductCard": {
         "type": "object",
         "properties": {
+          "type": { "type": "string", "example": "product" },
           "id": { "type": "string" },
           "title": { "type": "string" },
-          "price": { "type": "object" },
+          "subtitle": { "type": "string" },
+          "category": { "type": "string" },
+          "description": { "type": "string" },
+          "price": { "$ref": "#/components/schemas/Price" },
           "image_url": { "type": "string" },
+          "stock": { "type": "integer" },
+          "rating": { "type": "number" },
           "actions": { "type": "array" }
+        }
+      },
+      "ProductDetail": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "example": "product_detail" },
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "image_url": { "type": "string" },
+          "price": { "$ref": "#/components/schemas/Price" },
+          "stock": { "type": "integer" },
+          "rating": { "type": "number" },
+          "brand": { "type": "string" },
+          "actions": { "type": "array" }
+        }
+      },
+      "CategoryList": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "example": "category_list" },
+          "count": { "type": "integer" },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "name": { "type": "string" },
+                "actions": { "type": "array" }
+              }
+            }
+          }
         }
       },
       "Cart": {
         "type": "object",
         "properties": {
+          "type": { "type": "string", "example": "cart" },
           "id": { "type": "string" },
           "items": { "type": "array" },
-          "total": { "type": "object" }
+          "total": { "$ref": "#/components/schemas/Price" }
         }
       },
       "OrderConfirmation": {
         "type": "object",
         "properties": {
+          "type": { "type": "string", "example": "order_confirmation" },
           "order_id": { "type": "string" },
           "status": { "type": "string" },
-          "total": { "type": "object" },
-          "delivery": { "type": "object" },
+          "total": { "$ref": "#/components/schemas/Price" },
+          "delivery": {
+            "type": "object",
+            "properties": {
+              "address_id": { "type": "string" },
+              "slot_id": { "type": "string" }
+            }
+          },
           "payment_method": { "type": "string" }
+        }
+      },
+      "Price": {
+        "type": "object",
+        "properties": {
+          "value": { "type": "number" },
+          "currency": { "type": "string" },
+          "formatted": { "type": "string" }
         }
       }
     }
   }
 }
-
