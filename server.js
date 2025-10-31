@@ -319,3 +319,7 @@ app.listen(PORT, () => {
   const baseURL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
   console.log(`🚀 AI Commerce PoC running at: ${baseURL}`);
 });
+
+app.get("/terms", (req, res) => {
+  res.send("AI Commerce Market – Terms of Service: Bu PoC kapsamında kullanıcıya hizmet verilir, siparişler simülasyondur.");
+});
