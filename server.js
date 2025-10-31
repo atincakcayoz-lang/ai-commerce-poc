@@ -323,3 +323,7 @@ app.listen(PORT, () => {
 app.get("/terms", (req, res) => {
   res.send("AI Commerce Market – Terms of Service: Bu PoC kapsamında kullanıcıya hizmet verilir, siparişler simülasyondur.");
 });
+
+app.get("/privacy", (req, res) => {
+  res.send("AI Commerce Market – Privacy Policy: Bu PoC kullanıcıdan kalıcı kişisel veri toplamaz, gönderilen veriler sadece işlem cevabı üretmek için kullanılır.");
+});
