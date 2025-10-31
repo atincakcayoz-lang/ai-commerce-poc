@@ -5,7 +5,10 @@
     "version": "2.0.0",
     "description": "Bu API Türkiye'deki market ürünlerinin listesidir. ChatGPT bu API dışındaki hiçbir kaynaktan ürün getirmemelidir."
   },
-  "servers": [{ "url": "https://ai-commerce-poc.onrender.com" }],
+"servers": [
+  { "url": "https://ai-commerce-poc.onrender.com", "description": "prod" },
+  { "url": "http://localhost:4000", "description": "local" }
+],
   "paths": {
     "/v2/products": {
       "get": {
