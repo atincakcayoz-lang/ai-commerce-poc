@@ -1,17 +1,30 @@
+// server.js (ESM)
+
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
-import { faker } from "@faker-js/faker";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-app.use(cors());
+// ---- MIDDLEWARE ----
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 app.use(express.json());
 app.use(morgan("dev"));
 
-// Kategoriler
-const categories = [
+// GPT bazen önce OPTIONS atıyor, hepsine 200 dönelim
+app.options("*", (req, res) => {
+  res.sendStatus(200);
+});
+
+// ---- SABİT VERİLER ----
+const CATEGORIES = [
   "Süt & Kahvaltılık",
   "Et & Tavuk & Balık",
   "Sebze & Meyve",
@@ -20,206 +33,365 @@ const categories = [
   "Temel Gıda",
   "Kişisel Bakım",
   "Ev Bakım",
-  "Bebek Ürünleri",
-  "Evcil Hayvan"
 ];
 
-const brands = [
-  "Pınar",
-  "Sütaş",
-  "Torku",
-  "Ülker",
-  "Eti",
-  "Tat",
-  "Komili",
-  "Migros",
-  "Dimes",
-  "Sırma"
+const BRANDS = ["Pınar", "Sütaş", "Torku", "Ülker", "Eti", "Tat", "Komili", "Migros"];
+
+const IMAGE_POOL = [
+  "https://images.unsplash.com/photo-1580915411954-282cb1c9c450?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1625944527940-ef7fc9f45ed7?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1565958011702-44e211172bff?auto=format&fit=crop&w=800&q=80",
 ];
 
-// 10.000 ürün üretelim
-const products = Array.from({ length: 10000 }, (_, i) => {
-  const category = faker.helpers.arrayElement(categories);
-  const brand = faker.helpers.arrayElement(brands);
-  const unit = faker.helpers.arrayElement(["adet", "kg", "lt", "paket", "kutu", "şişe"]);
-  const price = faker.number.float({ min: 10, max: 500, precision: 0.01 });
-  const image = faker.helpers.arrayElement([
-    "https://images.unsplash.com/photo-1580915411954-282cb1c9c450?auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1625944527940-ef7fc9f45ed7?auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1565958011702-44e211172bff?auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1604908177522-040dbb6de9ae?auto=format&fit=crop&w=800&q=80"
-  ]);
-
+// 10.000 ürünü AYNI PROCESS’TE, BAŞTA üret → istek sırasında bekleme yok
+const PRODUCTS = Array.from({ length: 10000 }, (_, i) => {
+  const cat = CATEGORIES[i % CATEGORIES.length];
+  const brand = BRANDS[i % BRANDS.length];
+  const price = 25 + (i % 120); // hızlı olsun
   return {
     id: `PRD-${i + 1}`,
     type: "product",
-    title: `${brand} ${category} Ürünü ${i + 1}`,
+    title: `${brand} ${cat} Ürünü ${i + 1}`,
     subtitle: brand,
-    category,
-    description: `${category} kategorisinde ${brand} markasına ait ${unit} bazlı market ürünü.`,
+    category: cat,
+    description: `${cat} kategorisinde ${brand} markalı ürün.`,
     price: {
       value: price,
       currency: "TRY",
-      formatted: `${price.toFixed(2)} ₺`
+      formatted: `${price.toFixed(2)} ₺`,
     },
-    image_url: image,
-    stock: faker.number.int({ min: 0, max: 200 }),
-    rating: faker.number.float({ min: 3, max: 5, precision: 0.1 }),
+    image_url: IMAGE_POOL[i % IMAGE_POOL.length],
+    stock: 50 + (i % 50),
+    rating: 4,
     actions: [
       {
         type: "add_to_cart",
         label: "Sepete ekle",
         product_id: `PRD-${i + 1}`,
-        quantity: 1
-      }
-    ]
+        quantity: 1,
+      },
+    ],
   };
 });
 
-// health
-app.get("/", (req, res) => {
+// ---- WELL-KNOWN ----
+// plugin manifest
+app.get("/.well-known/ai-plugin.json", (req, res) => {
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.json({
-    ok: true,
-    message: "✅ AI Commerce Market PoC running",
-    products: products.length
+    schema_version: "v1",
+    name_for_human: "AI Commerce Market",
+    name_for_model: "ai_commerce_market",
+    description_for_human:
+      "Türkiye’deki market ürünlerini kendi API’nden listeleyen, sepete ekleyen ve ödeme adımına götüren akıllı market asistanı.",
+    description_for_model:
+      "Bu araç sadece https://ai-commerce-poc.onrender.com alan adındaki AI Commerce Market API’sini kullanır. Market ürünlerini aramak, kategori listelemek, sepete eklemek ve checkout yapmak için /v2/... endpoint’lerini çağır.",
+    auth: { type: "none" },
+    api: {
+      type: "openapi",
+      url: "https://ai-commerce-poc.onrender.com/v2-openapi.json",
+      is_user_authenticated: false,
+    },
+    logo_url: "https://picsum.photos/seed/ai-commerce-logo/256/256",
+    contact_email: "support@example.com",
+    legal_info_url: "https://ai-commerce-poc.onrender.com/legal",
+    terms_of_service_url: "https://ai-commerce-poc.onrender.com/terms",
+    privacy_policy_url: "https://ai-commerce-poc.onrender.com/privacy",
   });
 });
 
-// ürün listeleme
+// openapi dosyası
+app.get("/v2-openapi.json", (req, res) => {
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.json({
+    openapi: "3.1.0",
+    info: {
+      title: "AI Commerce Market API",
+      version: "2.0.0",
+      description:
+        "Bu API Türkiye’deki market ürünlerini listeler, sepete ekler ve checkout yapar. ChatGPT bu API dışındaki kaynaklardan ürün getirmemelidir.",
+    },
+    servers: [
+      {
+        url: "https://ai-commerce-poc.onrender.com",
+        description: "Render production",
+      },
+    ],
+    paths: {
+      "/v2/products": {
+        get: {
+          operationId: "listProducts",
+          summary: "Ürünleri listele",
+          parameters: [
+            {
+              name: "q",
+              in: "query",
+              schema: { type: "string" },
+              description: "Arama kelimesi veya kategori",
+            },
+            {
+              name: "limit",
+              in: "query",
+              schema: { type: "integer", default: 12 },
+              description: "Kaç ürün getirileceği",
+            },
+          ],
+          responses: {
+            200: {
+              description: "Ürün listesi",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ProductList" },
+                },
+              },
+            },
+          },
+        },
+      },
+      "/v2/categories": {
+        get: {
+          operationId: "listCategories",
+          summary: "Kategorileri listele",
+          responses: {
+            200: {
+              description: "Kategori listesi",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/CategoryList" },
+                },
+              },
+            },
+          },
+        },
+      },
+      "/v2/cart": {
+        post: {
+          operationId: "createCart",
+          summary: "Sepet oluştur",
+          responses: {
+            201: {
+              description: "Oluşturulan sepet",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/Cart" },
+                },
+              },
+            },
+          },
+        },
+      },
+      "/v2/cart/{cartId}/items": {
+        post: {
+          operationId: "addToCart",
+          summary: "Sepete ürün ekle",
+          parameters: [
+            {
+              name: "cartId",
+              in: "path",
+              required: true,
+              schema: { type: "string" },
+            },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    product_id: { type: "string" },
+                    quantity: { type: "integer", default: 1 },
+                  },
+                  required: ["product_id"],
+                },
+              },
+            },
+          },
+          responses: {
+            200: {
+              description: "Güncel sepet",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/Cart" },
+                },
+              },
+            },
+          },
+        },
+      },
+      "/v2/checkout": {
+        post: {
+          operationId: "checkout",
+          summary: "Ödemeyi tamamla",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    cart_id: { type: "string" },
+                    payment_method: { type: "string" },
+                  },
+                  required: ["cart_id"],
+                },
+              },
+            },
+          },
+          responses: {
+            200: {
+              description: "Sipariş onayı",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/OrderConfirmation" },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    components: {
+      schemas: {
+        ProductList: {
+          type: "object",
+          properties: {
+            type: { type: "string", example: "product_list" },
+            total: { type: "integer" },
+            count: { type: "integer" },
+            items: {
+              type: "array",
+              items: { $ref: "#/components/schemas/ProductCard" },
+            },
+          },
+        },
+        ProductCard: {
+          type: "object",
+          properties: {
+            type: { type: "string", example: "product" },
+            id: { type: "string" },
+            title: { type: "string" },
+            subtitle: { type: "string" },
+            category: { type: "string" },
+            description: { type: "string" },
+            price: { $ref: "#/components/schemas/Price" },
+            image_url: { type: "string" },
+            stock: { type: "integer" },
+            rating: { type: "number" },
+            actions: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  type: { type: "string" },
+                  label: { type: "string" },
+                  product_id: { type: "string" },
+                  quantity: { type: "integer" },
+                },
+              },
+            },
+          },
+        },
+        CategoryList: {
+          type: "object",
+          properties: {
+            type: { type: "string", example: "category_list" },
+            count: { type: "integer" },
+            items: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  name: { type: "string" },
+                },
+              },
+            },
+          },
+        },
+        Cart: {
+          type: "object",
+          properties: {
+            type: { type: "string", example: "cart" },
+            id: { type: "string" },
+            items: {
+              type: "array",
+              items: { type: "object" },
+            },
+            total: { $ref: "#/components/schemas/Price" },
+          },
+        },
+        OrderConfirmation: {
+          type: "object",
+          properties: {
+            type: { type: "string", example: "order_confirmation" },
+            order_id: { type: "string" },
+            status: { type: "string" },
+            total: { $ref: "#/components/schemas/Price" },
+          },
+        },
+        Price: {
+          type: "object",
+          properties: {
+            value: { type: "number" },
+            currency: { type: "string" },
+            formatted: { type: "string" },
+          },
+        },
+      },
+    },
+  });
+});
+
+// basit legal endpointleri
+app.get("/legal", (req, res) => res.send("AI Commerce PoC Legal"));
+app.get("/terms", (req, res) => res.send("AI Commerce PoC Terms"));
+app.get("/privacy", (req, res) => res.send("AI Commerce PoC Privacy"));
+
+// ---- ASIL ENDPOINTLER ----
+
+// ürünler
 app.get("/v2/products", (req, res) => {
-  const rawQ = req.query.q || "";
-  const q = rawQ.toLowerCase().trim();
+  const q = (req.query.q || "").toLowerCase().trim();
   const limit = parseInt(req.query.limit || "12", 10);
 
-  let results = products;
-
+  let results = PRODUCTS;
   if (q) {
-    // basit normalizasyon
-    const norm = q
-      .replace("süt ürünleri", "süt")
-      .replace("kahvaltı", "süt & kahvaltılık")
-      .replace("kahvaltılık", "süt & kahvaltılık")
-      .trim();
-
-    results = products.filter((p) => {
-      const title = p.title.toLowerCase();
-      const cat = p.category.toLowerCase();
-      const desc = p.description.toLowerCase();
-      return (
-        title.includes(norm) ||
-        cat.includes(norm) ||
-        desc.includes(norm)
-      );
-    });
+    results = PRODUCTS.filter(
+      (p) =>
+        p.title.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q) ||
+        p.description.toLowerCase().includes(q)
+    );
   }
 
   const items = results.slice(0, limit);
-
   res.json({
     type: "product_list",
     total: results.length,
     count: items.length,
-    items
+    items,
   });
 });
 
 // kategoriler
 app.get("/v2/categories", (req, res) => {
-  const items = categories.map((c, idx) => ({
-    id: `CAT-${idx + 1}`,
+  const items = CATEGORIES.map((c, i) => ({
+    id: `CAT-${i + 1}`,
     name: c,
-    actions: [
-      {
-        type: "list_products",
-        label: `${c} ürünlerini listele`,
-        query: c
-      }
-    ]
   }));
-
   res.json({
     type: "category_list",
     count: items.length,
-    items
-  });
-});
-
-// sepet oluştur
-app.post("/v2/cart", (req, res) => {
-  res.status(201).json({
-    type: "cart",
-    id: `CART-${Date.now()}`,
-    items: [],
-    total: {
-      value: 0,
-      currency: "TRY",
-      formatted: "0 ₺"
-    }
-  });
-});
-
-// sepete ürün ekle
-app.post("/v2/cart/:cartId/items", (req, res) => {
-  const { product_id, quantity = 1 } = req.body || {};
-  const { cartId } = req.params;
-
-  const product = products.find((p) => p.id === product_id);
-  if (!product) {
-    return res.status(404).json({ error: "Ürün bulunamadı" });
-  }
-
-  const lineTotal = product.price.value * quantity;
-
-  res.json({
-    type: "cart",
-    id: cartId,
-    items: [
-      {
-        product_id: product.id,
-        title: product.title,
-        image_url: product.image_url,
-        quantity,
-        line_total: {
-          value: lineTotal,
-          currency: "TRY",
-          formatted: `${lineTotal.toFixed(2)} ₺`
-        }
-      }
-    ],
-    total: {
-      value: lineTotal,
-      currency: "TRY",
-      formatted: `${lineTotal.toFixed(2)} ₺`
-    }
-  });
-});
-
-// checkout
-app.post("/v2/checkout", (req, res) => {
-  const { cart_id, payment_method = "credit_card" } = req.body || {};
-  res.json({
-    type: "order_confirmation",
-    order_id: `ORD-${Date.now()}`,
-    status: "confirmed",
-    total: {
-      value: 149.9,
-      currency: "TRY",
-      formatted: "149.90 ₺"
-    },
-    payment_method,
-    delivery: {
-      address_id: "HOME",
-      slot_id: "TODAY-18-20"
-    }
+    items,
   });
 });
 
 // 404
 app.use((req, res) => {
-  res.status(404).json({ error: "Endpoint bulunamadı" });
+  res.status(404).json({ error: "Not found" });
 });
 
-// listen
 app.listen(PORT, () => {
-  console.log(`✅ AI Commerce Market PoC running on port ${PORT}`);
+  console.log("✅ AI Commerce PoC up on port", PORT);
 });
