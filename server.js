@@ -1,39 +1,32 @@
-import express from "express";
-import cors from "cors";
-import morgan from "morgan";
-import { faker } from "@faker-js/faker";
+const express = require("express");
+const cors = require("cors");
+const morgan = require("morgan");
+const { faker } = require("@faker-js/faker");
 
 const app = express();
+const PORT = process.env.PORT || 4000;
+
+// temel middleware
 app.use(cors());
 app.use(express.json());
 app.use(morgan("dev"));
 
-// CORS & Preflight Middleware (Express 4 uyumlu)
+// CORS preflight (Express 4 uyumlu)
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
-  res.header(
-    "Access-Control-Allow-Methods",
-    "GET,POST,PUT,DELETE,OPTIONS"
-  );
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Content-Type, Authorization"
-  );
+  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
   if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
+    return res.sendStatus(200);
   }
   next();
 });
 
-// Ana kontrol endpoint
-app.get("/", (req, res) => {
-  res.json({
-    ok: true,
-    message: "✅ AI Commerce Market PoC running",
-  });
-});
+// =========================
+// MOCK VERİ KAYNAĞI
+// =========================
 
-// 10.000 ürün mock datası oluştur
+// Türkiye market kategorileri
 const categories = [
   "Süt & Kahvaltılık",
   "Et & Tavuk & Balık",
@@ -47,30 +40,47 @@ const categories = [
   "Evcil Hayvan"
 ];
 
-const brands = ["Pınar", "Torku", "Ülker", "Eti", "Tat", "Sütaş", "Sırma", "Komili", "Migros", "Dimes"];
+// Yerli / markette göreceğimiz markalar
+const brands = [
+  "Pınar",
+  "Sütaş",
+  "Torku",
+  "Ülker",
+  "Eti",
+  "Tat",
+  "Komili",
+  "Migros",
+  "Dimes",
+  "Sırma"
+];
 
+// 10.000 ürüne kadar üretelim (çok büyük ise 2000'e indirebilirsin)
 const products = Array.from({ length: 10000 }, (_, i) => {
   const category = faker.helpers.arrayElement(categories);
   const brand = faker.helpers.arrayElement(brands);
-  const image =
-    faker.helpers.arrayElement([
-      "https://images.unsplash.com/photo-1580915411954-282cb1c9c450",
-      "https://images.unsplash.com/photo-1625944527940-ef7fc9f45ed7",
-      "https://images.unsplash.com/photo-1565958011702-44e211172bff",
-      "https://images.unsplash.com/photo-1604908177522-040dbb6de9ae"
-    ]) + "?auto=format&fit=crop&w=600&q=80";
+  const unit = faker.helpers.arrayElement(["adet", "kg", "lt", "paket", "kutu", "şişe"]);
+  const price = faker.number.float({ min: 10, max: 500, precision: 0.01 });
+
+  // görseli sabitleyelim ki GPT kart gösterdiğinde bozuk olmasın
+  const image = faker.helpers.arrayElement([
+    "https://images.unsplash.com/photo-1580915411954-282cb1c9c450?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1625944527940-ef7fc9f45ed7?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1565958011702-44e211172bff?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1604908177522-040dbb6de9ae?auto=format&fit=crop&w=800&q=80"
+  ]);
 
   return {
     id: `PRD-${i + 1}`,
     sku: `SKU-${category.toLowerCase().replace(/\s/g, "-")}-${i + 1}`,
+    type: "product",
     title: `${brand} ${category} Ürünü ${i + 1}`,
     subtitle: brand,
     category,
-    description: `${category} kategorisinde ${brand} markasına ait ürün.`,
+    description: `${category} kategorisinde ${brand} markasına ait ${unit} bazlı market ürünü.`,
     price: {
-      value: faker.number.float({ min: 10, max: 500, precision: 0.01 }),
+      value: price,
       currency: "TRY",
-      formatted: `${faker.number.float({ min: 10, max: 500, precision: 0.01 })} ₺`
+      formatted: `${price.toFixed(2)} ₺`
     },
     stock: faker.number.int({ min: 0, max: 200 }),
     rating: faker.number.float({ min: 3, max: 5, precision: 0.1 }),
@@ -86,37 +96,67 @@ const products = Array.from({ length: 10000 }, (_, i) => {
   };
 });
 
-// 🔹 Ürün Listeleme
-app.get("/v2/products", (req, res) => {
-  const q = (req.query.q || "").toLowerCase();
-  const limit = parseInt(req.query.limit) || 12;
+// =========================
+// ENDPOINTLER
+// =========================
 
-  const filtered = q
-    ? products.filter(
-        (p) =>
-          p.title.toLowerCase().includes(q) ||
-          p.category.toLowerCase().includes(q)
-      )
-    : products;
-
+// healthcheck
+app.get("/", (req, res) => {
   res.json({
-    type: "product_list",
-    total: filtered.length,
-    count: limit,
-    items: filtered.slice(0, limit)
+    ok: true,
+    message: "✅ AI Commerce Market PoC running",
+    products: products.length
   });
 });
 
-// 🔹 Kategori Listeleme
+// ürün listeleme (gelişmiş arama)
+app.get("/v2/products", (req, res) => {
+  const q = (req.query.q || "").toLowerCase().trim();
+  const limit = parseInt(req.query.limit || "12", 10);
+
+  let results = products;
+
+  if (q) {
+    // küçük bir eş anlamlı / normalizasyon
+    const normalized = q
+      .replace("süt ürünleri", "süt")
+      .replace("kahvaltılık", "süt & kahvaltılık")
+      .replace("yoğurtlar", "yoğurt")
+      .trim();
+
+    results = products.filter((p) => {
+      const title = p.title.toLowerCase();
+      const cat = p.category.toLowerCase();
+      const desc = p.description.toLowerCase();
+
+      return (
+        title.includes(normalized) ||
+        cat.includes(normalized) ||
+        desc.includes(normalized)
+      );
+    });
+  }
+
+  const items = results.slice(0, limit);
+
+  res.json({
+    type: "product_list",
+    total: results.length,
+    count: items.length,
+    items
+  });
+});
+
+// kategoriler
 app.get("/v2/categories", (req, res) => {
-  const items = categories.map((c, i) => ({
-    id: `CAT-${i + 1}`,
+  const items = categories.map((c, idx) => ({
+    id: `CAT-${idx + 1}`,
     name: c,
     actions: [
       {
         type: "list_products",
         label: `${c} ürünlerini listele`,
-        category: c
+        query: c
       }
     ]
   }));
@@ -128,27 +168,32 @@ app.get("/v2/categories", (req, res) => {
   });
 });
 
-// 🔹 Sepet Oluşturma
+// sepet oluştur
 app.post("/v2/cart", (req, res) => {
-  res.status(201).json({
+  const cart = {
     type: "cart",
     id: `CART-${Date.now()}`,
     items: [],
     total: { value: 0, currency: "TRY", formatted: "0 ₺" }
-  });
+  };
+  res.status(201).json(cart);
 });
 
-// 🔹 Sepete Ürün Ekleme
+// sepete ürün ekle
 app.post("/v2/cart/:cartId/items", (req, res) => {
-  const { product_id, quantity } = req.body;
-  const product = products.find((p) => p.id === product_id);
-  if (!product)
-    return res.status(404).json({ error: "Ürün bulunamadı" });
+  const { product_id, quantity = 1 } = req.body;
+  const { cartId } = req.params;
 
-  const lineTotal = product.price.value * (quantity || 1);
-  res.json({
+  const product = products.find((p) => p.id === product_id);
+  if (!product) {
+    return res.status(404).json({ error: "Ürün bulunamadı" });
+  }
+
+  const lineTotal = product.price.value * quantity;
+
+  const cart = {
     type: "cart",
-    id: req.params.cartId,
+    id: cartId,
     items: [
       {
         product_id: product.id,
@@ -167,27 +212,38 @@ app.post("/v2/cart/:cartId/items", (req, res) => {
       currency: "TRY",
       formatted: `${lineTotal.toFixed(2)} ₺`
     }
-  });
+  };
+
+  res.json(cart);
 });
 
-// 🔹 Checkout (ödeme)
+// checkout
 app.post("/v2/checkout", (req, res) => {
-  const { cart_id, payment_method } = req.body;
+  const { cart_id, payment_method = "credit_card" } = req.body;
+
   res.json({
     type: "order_confirmation",
     order_id: `ORD-${Date.now()}`,
-    status: "onaylandı",
-    total: { value: faker.number.float({ min: 50, max: 500 }), currency: "TRY" },
-    payment_method: payment_method || "kredi kartı"
+    status: "confirmed",
+    total: {
+      value: 149.9,
+      currency: "TRY",
+      formatted: "149.90 ₺"
+    },
+    payment_method,
+    delivery: {
+      address_id: "HOME",
+      slot_id: "TODAY-18-20"
+    }
   });
 });
 
-// 🔹 404 fallback
+// 404 fallback
 app.use((req, res) => {
   res.status(404).json({ error: "Endpoint bulunamadı" });
 });
 
-const PORT = process.env.PORT || 4000;
-app.listen(PORT, () =>
-  console.log(`✅ AI Commerce Market PoC running on port ${PORT}`)
-);
+// sunucu
+app.listen(PORT, () => {
+  console.log(`✅ AI Commerce Market PoC running on port ${PORT}`);
+});
