@@ -9,7 +9,7 @@
     {
       "url": "https://ai-commerce-poc.onrender.com",
       "description": "Render production"
-    },
+    }
   ],
   "paths": {
     "/v2/products": {
