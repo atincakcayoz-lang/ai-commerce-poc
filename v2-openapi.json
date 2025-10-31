@@ -5,7 +5,7 @@
     "version": "2.0.0",
     "description": "AI tabanlı market ürün listeleme ve sipariş API'si"
   },
-  "servers": [{ "url": "http://localhost:4000" }],
+  "servers": [{ "url": "https://ai-commerce-poc.onrender.com" }],
   "paths": {
     "/v2/products": {
       "get": {
