@@ -13,18 +13,77 @@ app.use(morgan("dev"));
 /* ------------------ 1) TÜRKİYE'YE ÖZGÜ 10.000 ÜRÜN ------------------ */
 function generateTurkishProducts() {
   const categories = [
-    { code: "sut-kahvalti", name: "Süt & Kahvaltılık", price: [30, 160], img: "photo-1580915411954-282cb1c9c450" },
-    { code: "et-tavuk", name: "Et & Tavuk", price: [190, 480], img: "photo-1604908176997-1251882baab4" },
-    { code: "sebze", name: "Sebze", price: [15, 60], img: "photo-1540420773420-3366772f4999" },
-    { code: "meyve", name: "Meyve", price: [15, 75], img: "photo-1517260739337-6799d239ce83" },
-    { code: "icecek", name: "İçecek", price: [10, 50], img: "photo-1544145945-f90425340c7e" },
-    { code: "atistirmalik", name: "Atıştırmalık", price: [12, 90], img: "photo-1542838132-de9d4df786e9" },
-    { code: "temel-gida", name: "Temel Gıda", price: [25, 220], img: "photo-1586201375761-83865001e31b" },
-    { code: "temizlik", name: "Temizlik & Deterjan", price: [35, 190], img: "photo-1581578731548-c64695cc6952" },
-    { code: "kisisel-bakim", name: "Kişisel Bakım", price: [25, 280], img: "photo-1588776814546-ec7c9a92f8e3" }
+    {
+      code: "sut-kahvalti",
+      name: "Süt & Kahvaltılık",
+      price: [30, 160],
+      img: "photo-1580915411954-282cb1c9c450" // süt şişesi
+    },
+    {
+      code: "et-tavuk",
+      name: "Et & Tavuk",
+      price: [190, 480],
+      img: "photo-1604908176997-1251882baab4" // kırmızı et
+    },
+    {
+      code: "sebze",
+      name: "Sebze",
+      price: [15, 60],
+      img: "photo-1540420773420-3366772f4999" // sebzeler
+    },
+    {
+      code: "meyve",
+      name: "Meyve",
+      price: [15, 75],
+      img: "photo-1517260739337-6799d239ce83" // meyveler
+    },
+    {
+      code: "icecek",
+      name: "İçecek",
+      price: [10, 50],
+      img: "photo-1544145945-f90425340c7e" // içecekler
+    },
+    {
+      code: "atistirmalik",
+      name: "Atıştırmalık",
+      price: [12, 90],
+      img: "photo-1542838132-de9d4df786e9" // çerez
+    },
+    {
+      code: "temel-gida",
+      name: "Temel Gıda",
+      price: [25, 220],
+      img: "photo-1586201375761-83865001e31b" // makarna, yağ
+    },
+    {
+      code: "temizlik",
+      name: "Temizlik & Deterjan",
+      price: [35, 190],
+      img: "photo-1581578731548-c64695cc6952" // temizlik ürünleri
+    },
+    {
+      code: "kisisel-bakim",
+      name: "Kişisel Bakım",
+      price: [25, 280],
+      img: "photo-1588776814546-ec7c9a92f8e3" // kozmetik
+    }
   ];
 
-  const brands = ["Sütaş", "Pınar", "Torku", "Ülker", "Eti", "Tat", "Yudum", "Komili", "Erikli", "Fairy", "Domestos", "ABC"];
+  const brands = [
+    "Sütaş",
+    "Pınar",
+    "Torku",
+    "Ülker",
+    "Eti",
+    "Tat",
+    "Yudum",
+    "Komili",
+    "Erikli",
+    "Fairy",
+    "Domestos",
+    "ABC"
+  ];
+
   const units = ["adet", "kg", "lt", "paket", "kutu", "şişe"];
   const PRODUCTS = [];
 
@@ -34,7 +93,9 @@ function generateTurkishProducts() {
 
   for (const cat of categories) {
     for (let i = 0; i < perCategory; i++) {
-      const price = +(cat.price[0] + Math.random() * (cat.price[1] - cat.price[0])).toFixed(2);
+      const price = +(
+        cat.price[0] + Math.random() * (cat.price[1] - cat.price[0])
+      ).toFixed(2);
       const brand = brands[Math.floor(Math.random() * brands.length)];
       const unit = units[Math.floor(Math.random() * units.length)];
       const stock = Math.floor(Math.random() * 120) + 5;
@@ -57,6 +118,7 @@ function generateTurkishProducts() {
         isPopular: Math.random() > 0.85,
         rating: +(3 + Math.random() * 2).toFixed(1)
       });
+
       id++;
       if (PRODUCTS.length >= targetTotal) break;
     }
@@ -69,7 +131,11 @@ console.log("🛒 Generated products:", PRODUCTS.length);
 
 /* ------------------ 2) HEALTHCHECK ------------------ */
 app.get("/", (req, res) => {
-  res.json({ ok: true, message: "AI Commerce PoC is up", products: PRODUCTS.length });
+  res.json({
+    ok: true,
+    message: "AI Commerce PoC is up",
+    products: PRODUCTS.length
+  });
 });
 
 /* ------------------ 3) V1: Ham Ürün Listesi ------------------ */
@@ -124,10 +190,44 @@ app.get("/v2/products", (req, res) => {
     stock: p.stock,
     image_url: p.image_url,
     rating: p.rating,
-    actions: [{ type: "add_to_cart", label: "Sepete ekle", product_id: p.id, quantity: 1 }]
+    actions: [
+      { type: "add_to_cart", label: "Sepete ekle", product_id: p.id, quantity: 1 }
+    ]
   }));
 
   res.json({ type: "product_list", total: filtered.length, count: items.length, items });
+});
+
+/* --- 4.1 Tek ürün detayı --- */
+app.get("/v2/products/:id", (req, res) => {
+  const product = PRODUCTS.find((p) => p.id === req.params.id);
+  if (!product) return res.status(404).json({ error: "Product not found" });
+  res.json({
+    type: "product_detail",
+    id: product.id,
+    title: product.name,
+    description: product.description,
+    image_url: product.image_url,
+    price: { value: product.price, currency: "TRY", formatted: `${product.price} ₺` },
+    stock: product.stock,
+    rating: product.rating,
+    brand: product.brand,
+    actions: [{ type: "add_to_cart", label: "Sepete ekle", product_id: product.id, quantity: 1 }]
+  });
+});
+
+/* --- 4.2 Kategoriler --- */
+app.get("/v2/categories", (req, res) => {
+  const categories = [...new Set(PRODUCTS.map((p) => p.category))];
+  res.json({
+    type: "category_list",
+    count: categories.length,
+    items: categories.map((c, i) => ({
+      id: `CAT-${i + 1}`,
+      name: c,
+      actions: [{ type: "view_products", label: `${c} ürünlerini göster`, query: c }]
+    }))
+  });
 });
 
 /* ------------------ CART & CHECKOUT ------------------ */
